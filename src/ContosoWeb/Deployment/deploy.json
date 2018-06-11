@@ -1,0 +1,255 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "_artifactsLocation": {
+      "type": "string"
+    },
+    "AppServicePlanName": {
+      "type": "string",
+      "minLength": 1
+    },
+    "AppServicePlanSkuName": {
+      "type": "string",
+      "defaultValue": "F1",
+      "allowedValues": [
+        "F1",
+        "D1",
+        "B1",
+        "B2",
+        "B3",
+        "S1",
+        "S2",
+        "S3",
+        "P1",
+        "P2",
+        "P3",
+        "P4"
+      ],
+      "metadata": {
+        "description": "Describes plan's pricing tier and capacity. Check details at https://azure.microsoft.com/en-us/pricing/details/app-service/"
+      }
+    },
+    "databaseservername": {
+      "type": "string"
+    },
+    "instrumentationkey": {
+      "type":  "string"
+    },
+    "webappname": {
+      "type": "string"
+
+    }
+  },
+  "variables": {
+    "WebAppName": "[concat('WebApp', uniqueString(resourceGroup().id))]",
+    "DatabaseLogin": "ben",
+
+    "DatabasePassword": "Sonne1234$",
+
+    "DatabaseName": "ContosoSports.Database",
+
+    "DatabaseEdition": "Basic",
+
+    "DatabaseCollation": "SQL_Latin1_General_CP1_CI_AS"
+  },
+  "resources": [
+    {
+      "name": "[parameters('AppServicePlanName')]",
+      "type": "Microsoft.Web/serverfarms",
+      "location": "[resourceGroup().location]",
+      "apiVersion": "2015-08-01",
+      "sku": {
+        "name": "[parameters('AppServicePlanSkuName')]"
+      },
+      "dependsOn": [],
+      "tags": {
+        "displayName": "AppServicePlan"
+      },
+      "properties": {
+        "name": "[parameters('AppServicePlanName')]",
+        "numberOfWorkers": 1
+      }
+    },
+
+    {
+
+      "name": "[parameters('DatabaseServerName')]",
+
+      "type": "Microsoft.Sql/servers",
+
+      "location": "[resourceGroup().location]",
+
+      "apiVersion": "2014-04-01-preview",
+
+      "dependsOn": [],
+
+      "tags": {
+
+        "displayName": "ContosoSports"
+
+      },
+
+      "properties": {
+
+        "administratorLogin": "[variables('DatabaseLogin')]",
+
+        "administratorLoginPassword": "[variables('DatabasePassword')]"
+
+      },
+
+      "resources": [
+
+        {
+
+          "name": "AllowAllWindowsAzureIps",
+
+          "type": "firewallrules",
+
+          "location": "[resourceGroup().location]",
+
+          "apiVersion": "2014-04-01-preview",
+
+          "dependsOn": [
+
+            "[concat('Microsoft.Sql/servers/', parameters('DatabaseServerName'))]"
+
+          ],
+
+          "properties": {
+
+            "startIpAddress": "0.0.0.0",
+
+            "endIpAddress": "0.0.0.0"
+
+          }
+
+        },
+
+        {
+
+          "name": "[variables('DatabaseName')]",
+
+          "type": "databases",
+
+          "location": "[resourceGroup().location]",
+
+          "apiVersion": "2014-04-01-preview",
+
+          "dependsOn": [
+
+            "[concat('Microsoft.Sql/servers/', parameters('DatabaseServerName'))]"
+
+          ],
+
+          "tags": {
+
+            "displayName": "ContosoSports.Database"
+
+          },
+
+          "properties": {
+
+            "collation": "[variables('DatabaseCollation')]",
+
+            "edition": "[variables('DatabaseEdition')]",
+
+            "maxSizeBytes": "1073741824"
+
+          }
+
+        }
+
+      ]
+
+    },
+
+    {
+      "name": "[parameters('webappname')]",
+      "type": "Microsoft.Web/sites",
+      "location": "[resourceGroup().location]",
+      "apiVersion": "2015-08-01",
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/serverfarms', parameters('AppServicePlanName'))]"
+      ],
+      "tags": {
+        "[concat('hidden-related:', resourceId('Microsoft.Web/serverfarms', parameters('AppServicePlanName')))]": "Resource",
+        "displayName": "WebApp"
+      },
+      "properties": {
+        "name": "[parameters('webappname')]",
+        "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', parameters('AppServicePlanName'))]"
+      },
+      "resources": [
+
+        {
+
+          "apiVersion": "2015-08-01",
+
+          "type": "config",
+
+          "name": "connectionstrings",
+
+          "dependsOn": [
+
+            "[concat('Microsoft.Web/sites/', parameters('WebAppName'))]",
+            "[concat('Microsoft.Web/sites/', parameters('WebAppName'), '/Extensions/MSDeploy')]"
+
+
+          ],
+
+          "properties": {
+
+            "DefaultConnectionString": {
+
+              "value": "[concat('Data Source=tcp:', reference(concat('Microsoft.Sql/servers/', parameters('DatabaseServerName'))).fullyQualifiedDomainName, ',1433;Initial Catalog=', variables('DatabaseName'), ';User Id=', variables('DatabaseLogin'), '@', parameters('DatabaseServerName'), ';Password=', variables('DatabasePassword'), ';')]",
+
+              "type": "SQLAzure"
+
+            }
+          }
+        },
+
+        {
+          "apiVersion": "2015-08-01",
+          "name": "appsettings",
+          "type": "config",
+          "dependsOn": [
+
+            "[concat('Microsoft.Web/sites/', parameters('WebAppName'))]",
+            "[concat('Microsoft.Web/sites/', parameters('WebAppName'), '/Extensions/MSDeploy')]"
+
+
+
+          ],
+          "properties": {
+            "APPINSIGHTS_INSTRUMENTATIONKEY": "[parameters('instrumentationkey')]"
+          }
+        },
+
+        {
+          "name": "MSDeploy",
+          "type": "extensions",
+          "location": "[resourceGroup().location]",
+          "apiVersion": "2015-08-01",
+          "dependsOn": [
+            "[parameters('webappname')]"
+          ],
+          "tags": {
+            "displayName": "WebDeploy"
+          },
+          "properties": {
+            "packageUri": "[parameters('_artifactsLocation')]",
+            "dbType": "None"
+
+
+
+          }
+        }
+      ]
+    }
+   
+  ],
+  "outputs": {
+  }
+}

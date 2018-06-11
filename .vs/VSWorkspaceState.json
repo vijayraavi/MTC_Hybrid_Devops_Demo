@@ -1,0 +1,14 @@
+{
+  "ExpandedNodes": [
+    "",
+    "\\src",
+    "\\src\\Contoso.Models",
+    "\\src\\ContosoWeb",
+    "\\src\\ContosoWeb\\Deployment",
+    "\\src\\ContosoWeb\\Views",
+    "\\src\\ContosoWeb\\Views\\Home",
+    "\\src\\ContosoWeb\\Views\\Shared"
+  ],
+  "SelectedNode": "\\src\\ContosoWeb\\Deployment\\deploy2.json",
+  "PreviewInSolutionExplorer": false
+}
